@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Studio Hello 市民会議 統合AIシステム（グラレコ・マインドマップ・タイマー＆テロップ・25名話者識別・自律調査）</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --panel: #1e293b;
+      --panel-alt: #162032;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --accent: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --purple: #8b5cf6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 7px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    .nav-tabs { display: flex; gap: 6px; }
+    .tab-btn {
+      background: #0f172a;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .top-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    input, select, button {
+      background: #0f172a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 9px;
+      font-size: 12px;
+    }
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.15s;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.15); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-accent { background: var(--accent); border-color: var(--accent); color: #052e16; }
+    .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .btn-purple { background: var(--purple); border-color: var(--purple); color: #fff; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #334155;
+    }
+    .badge.ok { background: #065f46; color: #6ee7b7; }
+    .badge.warn { background: var(--warn); color: #000; font-weight: 700; }
+
+    .view-container { flex: 1; display: none; overflow: hidden; }
+    .view-container.active { display: grid; }
+
+    #viewLive { grid-template-columns: 310px 1fr 320px; }
+    .col {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .col:last-child { border-right: none; }
+    .col-header {
+      background: var(--panel-alt);
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 25名パレット */
+    .speaker-grid {
+      padding: 6px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      max-height: 225px;
+      overflow-y: auto;
+      border-bottom: 1px solid var(--border);
+      background: #0f172a;
+    }
+    .spk-chip {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 5px 4px;
+      font-size: 11px;
+      text-align: center;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .spk-chip.remote { border-left: 3px solid #38bdf8; }
+    .spk-chip.venue { border-left: 3px solid #a3e635; }
+    .spk-chip.active {
+      background: #1d4ed8;
+      border-color: #60a5fa;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 0 0 2px rgba(96,165,250,0.4);
+    }
+
+    .scroll-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      user-select: text;
+    }
+    .log-item {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12.5px;
+    }
+    .log-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+    .log-speaker {
+      background: #1e40af;
+      color: #dbeafe;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* 中央ツールバー（モード切替＆電子ペン） */
+    .canvas-toolbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 5px 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mode-switch-group, .pen-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .mode-btn.active {
+      background: var(--primary);
+      border-color: #93c5fd;
+      color: #fff;
+    }
+    .pen-btn.selected {
+      outline: 2px solid #fff;
+      font-weight: 800;
+    }
+
+    /* 会議進行ツールバー（タイマー＆テロップ制御バー：動画31:00機能） */
+    .presenter-bar {
+      background: #131c31;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+    }
+    .timer-controls, .telop-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .preset-chip {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .preset-chip.active {
+      background: #f59e0b;
+      color: #000;
+      border-color: #fbbf24;
+      font-weight: 700;
+    }
+
+    /* ボード本体 */
+    .board-wrapper {
+      flex: 1;
+      position: relative;
+      background: #f8fafc;
+      color: #0f172a;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #visualContentArea {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 1;
+    }
+    #aiGraphicLayer {
+      flex: 1;
+      padding: 14px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #mindmapLayer {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 20px 20px;
+      background-color: #f1f5f9;
+      overflow: hidden;
+      display: none;
+      border-top: 2px solid #cbd5e1;
+    }
+    #mindmapSvg {
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #mindmapSvg:active { cursor: grabbing; }
+    .mm-overlay-bar {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+    .mm-overlay-bar > * { pointer-events: auto; }
+    .mm-status-pill {
+      background: rgba(15, 23, 42, 0.85);
+      color: #fff;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .gr-header-banner {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .gr-header-banner h2 { margin: 0; font-size: 18px; }
+    .gr-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .gr-card {
+      background: #ffffff;
+      border: 2px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .gr-card.opinion { border-top: 5px solid #3b82f6; }
+    .gr-card.issue { border-top: 5px solid #f59e0b; }
+    .gr-card.consensus { border-top: 5px solid #10b981; background: #f0fdf4; }
+    .gr-card.fact { border-top: 5px solid #8b5cf6; background: #f5f3ff; }
+    .gr-card h3 { margin: 0 0 6px 0; font-size: 14px; }
+    .gr-card ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+
+    /* EB-1410WT 電子ペン手書きレイヤー */
+    #drawingCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    #drawingCanvas.passthrough { pointer-events: none; }
+
+    /* マグネット吸着式 タイマー＆テロップ オーバーレイHUD（動画31:33機能） */
+    .hud-overlay {
+      position: absolute;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.92);
+      color: #ffffff;
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      padding: 8px 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.28);
+      cursor: move;
+      touch-action: none;
+      transition: top 0.18s ease, left 0.18s ease, right 0.18s ease, bottom 0.18s ease;
+    }
+    .hud-overlay.dragging { transition: none; opacity: 0.9; }
+    /* 6箇所のマグネット吸着位置クラス */
+    .hud-snap-top-center { top: 12px; left: 50%; transform: translateX(-50%); }
+    .hud-snap-top-right { top: 12px; right: 16px; }
+    .hud-snap-top-left { top: 12px; left: 16px; }
+    .hud-snap-bottom-center { bottom: 12px; left: 50%; transform: translateX(-50%); }
+    .hud-snap-bottom-right { bottom: 12px; right: 16px; }
+    .hud-snap-bottom-left { bottom: 12px; left: 16px; }
+
+    .hud-telop-badge {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hud-timer-box {
+      font-family: "SF Mono", "Roboto Mono", monospace;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      padding: 2px 10px;
+      border-radius: 8px;
+      background: #1e293b;
+      color: #60a5fa;
+      border: 1px solid #475569;
+    }
+    .hud-timer-box.warn {
+      background: #78350f;
+      color: #fde047;
+      border-color: #f59e0b;
+    }
+    .hud-timer-box.timeup {
+      background: #991b1b;
+      color: #fecaca;
+      border-color: #ef4444;
+      animation: pulseAlert 0.8s infinite alternate;
+    }
+    @keyframes pulseAlert {
+      from { transform: scale(1); }
+      to { transform: scale(1.06); }
+    }
+
+    .slide-bar {
+      background: var(--panel-alt);
+      border-top: 1px solid var(--border);
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+    }
+    .slide-thumb {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .slide-thumb.active {
+      background: var(--primary);
+      border-color: #93c5fd;
+    }
+
+    .research-card {
+      background: #172554;
+      border: 1px solid #1d4ed8;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+    }
+    .research-title {
+      font-weight: 700;
+      color: #93c5fd;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .research-body { line-height: 1.5; white-space: pre-wrap; margin-bottom: 8px; }
+    .research-links a {
+      display: block;
+      color: #60a5fa;
+      font-size: 11px;
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #viewSystem { grid-template-columns: 1.15fr 1fr; overflow-y: auto; }
+    .sys-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .sys-box h3 { margin: 0 0 10px 0; font-size: 15px; color: #93c5fd; }
+    table.matrix { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.matrix th, table.matrix td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+    table.matrix th { background: #0f172a; color: #cbd5e1; }
+    .chk-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .chk-row input { margin-top: 3px; transform: scale(1.2); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span>🏛️ Studio Hello 市民会議 統合AI管制システム</span>
+    <div class="nav-tabs">
+      <button class="tab-btn active" id="tabBtnLive">🎨 ① ライブ会議（グラレコ・マップ・タイマー・自律調査）</button>
+      <button class="tab-btn" id="tabBtnSystem">🎛️ ② 4大サブシステム配線図＆当日点検ボード</button>
+    </div>
+  </div>
+
+  <div class="top-controls">
+    <input type="password" id="apiKey" placeholder="Gemini API Key (AIza...)" style="width:160px;" />
+    <button id="btnAudioMeet" title="Google Meetのリモート音声を取得">① Meetタブ音</button>
+    <button id="btnAudioVenue" title="アナログミキサーREC OUT (A-6) または会場マイクを入力">② 会場音(A-6)</button>
+    <button id="btnStart" class="btn-accent" disabled>▶ 会議AI稼働</button>
+    <button id="btnStop" class="btn-danger" disabled>■ 停止</button>
+    <button id="btnPopout" title="150インチ4Kスクリーン投影用に別ウィンドウで切り出し">🪟 150型投影ウィンドウ</button>
+    <button id="btnSaveHtml" class="btn-purple">💾 議事録＆マップ保存</button>
+  </div>
+</header>
+
+<!-- ==================== ビュー1：ライブ会議 ==================== -->
+<div id="viewLive" class="view-container active">
+
+  <!-- 左カラム：25名パレット ＋ 発言ログ -->
+  <section class="col">
+    <div class="col-header">
+      <span>👥 参加者25名（ペンタップで話者固定 / 自動識別）</span>
+      <button id="btnEditRoster" style="padding:2px 8px; font-size:11px;">名簿編集</button>
+    </div>
+    <div class="speaker-grid" id="speakerGrid"></div>
+
+    <div class="col-header">
+      <span>🎙️ 話者識別ログ <span id="statusBadge" class="badge">待機中</span></span>
+      <label style="font-size:11px; font-weight:normal; cursor:pointer;">
+        <input type="checkbox" id="autoLockRelease" checked /> 発話後ロック解除
+      </label>
+    </div>
+    <div class="scroll-list" id="transcriptList">
+      <div style="color:var(--muted); font-size:12px; line-height:1.5;">
+        ・<strong>自動声質識別</strong>：同じアカウント（会場ミキサー `A-6`）の複数人の声を声質・文脈で自動識別します。<br>
+        ・<strong>電子ペン指定</strong>：25名パレットをEB-1410WTの電子ペンでタップすると発言者を即座に固定できます。
+      </div>
+    </div>
+  </section>
+
+  <!-- 中央カラム：AIグラレコ ＆ マインドマップ ＆ タイマー/テロップ ＆ 電子ペン描画 -->
+  <section class="col">
+    <!-- 1段目：表示モード＆電子ペンツールバー -->
+    <div class="canvas-toolbar">
+      <div class="mode-switch-group">
+        <button class="mode-btn active" data-view="graphic">📋 4象限グラレコ</button>
+        <button class="mode-btn" data-view="mindmap">🧠 マインドマップ</button>
+        <button class="mode-btn" data-view="split">📐 上下分割(両方)</button>
+      </div>
+
+      <div class="pen-group">
+        <button class="pen-btn" data-mode="scroll" style="background:#334155;">👆 ノード操作/移動</button>
+        <button class="pen-btn selected" data-mode="draw" data-color="#ef4444" data-width="4" style="background:#ef4444; color:#fff;">✏️ 赤ペン</button>
+        <button class="pen-btn" data-mode="draw" data-color="#2563eb" data-width="4" style="background:#2563eb; color:#fff;">青ペン</button>
+        <button class="pen-btn" data-mode="highlight" data-color="rgba(250,204,21,0.45)" data-width="18" style="background:#eab308; color:#000;">蛍光</button>
+        <button class="pen-btn" data-mode="erase" data-color="#000" data-width="24">消ゴム</button>
+        <button id="btnClearInk" style="padding:4px 7px;">消去</button>
+      </div>
+
+      <button id="btnUpdateGr" class="btn-purple">✨ AI図解＆マップ更新</button>
+    </div>
+
+    <!-- 2段目：会議進行タイマー ＆ アジェンダテロップ操作バー（動画31:00機能） -->
+    <div class="presenter-bar">
+      <!-- タイマー制御 -->
+      <div class="timer-controls">
+        <label style="cursor:pointer; font-weight:700; display:flex; align-items:center; gap:3px;">
+          <input type="checkbox" id="chkShowTimer" checked /> ⏱️タイマー:
+        </label>
+        <button class="timer-preset" data-min="1">1分</button>
+        <button class="timer-preset" data-min="3">3分</button>
+        <button class="timer-preset" data-min="5">5分</button>
+        <button class="timer-preset" data-min="10">10分</button>
+        <button class="timer-preset" data-min="15">15分</button>
+        <button id="btnTimerToggle" class="btn-accent" style="padding:3px 9px;">▶ 開始</button>
+        <button id="btnTimerReset" style="padding:3px 7px;">↺</button>
+        <select id="selHudSnap" title="画面上のマグネット吸着位置">
+          <option value="bottom-left" selected>🧲 左下に吸着</option>
+          <option value="bottom-right">🧲 右下に吸着</option>
+          <option value="bottom-center">🧲 下中央に吸着</option>
+          <option value="top-right">🧲 右上に吸着</option>
+          <option value="top-center">🧲 上中央に吸着</option>
+          <option value="top-left">🧲 左上に吸着</option>
+        </select>
+      </div>
+
+      <!-- テロップ（アジェンダ）ワンタップ切り替え -->
+      <div class="telop-controls">
+        <label style="cursor:pointer; font-weight:700; display:flex; align-items:center; gap:3px;">
+          <input type="checkbox" id="chkShowTelop" checked /> 🏷️テロップ:
+        </label>
+        <div id="telopChipsContainer" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+        <button id="btnAddTelop" title="新しいテロップ項目を追加" style="padding:2px 7px;">＋追加</button>
+      </div>
+    </div>
+
+    <div class="board-wrapper" id="boardWrapper">
+      <!-- マグネット吸着式 タイマー＆テロップ オーバーレイ（ドラッグ移動＆自動スナップ対応） -->
+      <div id="hudOverlay" class="hud-overlay hud-snap-bottom-left" title="ドラッグして6箇所のマグネット位置へ移動できます">
+        <div id="hudTelopBox" class="hud-telop-badge">
+          <span>📢</span>
+          <span id="hudTelopText">① 開会・本日の趣旨説明</span>
+        </div>
+        <div id="hudTimerBox" class="hud-timer-box">05:00</div>
+      </div>
+
+      <div id="visualContentArea">
+        <!-- ① 4象限グラレコレイヤー -->
+        <div id="aiGraphicLayer">
+          <div class="gr-header-banner">
+            <div>
+              <div style="font-size:10px; opacity:0.85;">STUDIO HELLO HYBRID CIVIC COUNCIL</div>
+              <h2 id="grTitle" contenteditable="true">第1回 市民会議：地域の未来とまちづくり</h2>
+            </div>
+            <div style="text-align:right; font-size:11.5px;">
+              <div>会場20名 ＋ リモート5名</div>
+              <div id="grUpdatedTime">AIグラレコ待機中</div>
+            </div>
+          </div>
+
+          <div class="gr-cards-grid" id="grCardsContainer">
+            <div class="gr-card opinion">
+              <h3>💡 主要な意見・提案</h3>
+              <ul id="grListOpinions">
+                <li>会議が始まると発言者名とともに意見が自動整理されます。</li>
+              </ul>
+            </div>
+            <div class="gr-card issue">
+              <h3>⚠️ 課題・議論のポイント</h3>
+              <ul id="grListIssues">
+                <li>予算・運用面などの懸念点や論点がここに可視化されます。</li>
+              </ul>
+            </div>
+            <div class="gr-card consensus">
+              <h3>🤝 合意事項・ネクストアクション</h3>
+              <ul id="grListConsensus">
+                <li>決定事項や次回のアクションがリアルタイムにまとまります。</li>
+              </ul>
+            </div>
+            <div class="gr-card fact">
+              <h3>📊 AIリサーチ・ファクトデータ</h3>
+              <ul id="grListFacts">
+                <li>右ペインの「🔍 AI自律リサーチ」からワンタップで事実データを追加できます。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- ② インタラクティブ・マインドマップレイヤー（動画22:14機能） -->
+        <div id="mindmapLayer">
+          <div class="mm-overlay-bar">
+            <div class="mm-status-pill">
+              <span>🧠 リアルタイム・マインドマップ</span>
+              <label style="font-weight:normal; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                <input type="checkbox" id="mmAutoToggle" checked /> 自動更新(1分毎)
+              </label>
+              <span id="mmLastUpdated" style="color:#93c5fd; font-weight:normal; font-size:11px;">初期状態</span>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button id="btnMmLocalSync" class="btn-primary">⚡ 即時ツリー反映(API不要)</button>
+              <button id="btnMmAiRefresh" class="btn-purple">🔄 AIマインドマップ更新</button>
+              <button id="btnMmResetZoom" style="background:#0f172a; color:#fff;">🔍 全体フィット</button>
+            </div>
+          </div>
+          <svg id="mindmapSvg" viewBox="0 0 1100 620" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+
+      <!-- EB-1410WT 電子ペン手書きキャンバス -->
+      <canvas id="drawingCanvas"></canvas>
+    </div>
+
+    <!-- スライド履歴バー -->
+    <div class="slide-bar">
+      <span style="font-size:12px; font-weight:700; color:var(--muted);">📑 スライド履歴:</span>
+      <div id="slideThumbs" style="display:flex; gap:6px;"></div>
+      <button id="btnNewSlide" style="margin-left:auto;">＋ 新規スライド作成</button>
+    </div>
+  </section>
+
+  <!-- 右カラム：AI自律リサーチ（動画5:38機能） -->
+  <section class="col">
+    <div class="col-header">
+      <span>🔍 AI自律リサーチ（調べたこと） <span id="researchCount" class="badge warn">0</span></span>
+      <label style="font-size:11px; font-weight:normal; cursor:pointer;">
+        <input type="checkbox" id="autoResearchToggle" checked /> 自動検索ON
+      </label>
+    </div>
+
+    <div style="padding:8px; background:var(--panel-alt); border-bottom:1px solid var(--border); display:flex; gap:6px;">
+      <input type="text" id="manualQueryInput" placeholder="調べたい事柄を入力してEnter..." style="flex:1;" />
+      <button id="btnManualSearch" class="btn-accent">検索</button>
+    </div>
+
+    <div class="scroll-list" id="researchList">
+      <div style="color:var(--muted); font-size:12px; line-height:1.5;">
+        会話の中で「統計数値・条例・制度・自治体事例・専門用語」などが話題に上ると、AIが自律的にGoogle検索を実行して要約カードを表示します。<br><br>
+        <strong>「📌 グラレコ＆マップに貼る」</strong>を押すと、4象限ボードとマインドマップの両方に即座に反映されます。
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ==================== ビュー2：4大サブシステム配線図＆当日点検ボード ==================== -->
+<div id="viewSystem" class="view-container">
+  <div style="padding:16px; overflow-y:auto; border-right:1px solid var(--border);">
+    <div class="sys-box">
+      <h3>🎥 【A】映像・マルチカメラ・プロジェクター結線（V-1〜V-9）</h3>
+      <table class="matrix">
+        <thead>
+          <tr><th>番号</th><th>送り出し機器</th><th>受け側機器</th><th>ケーブル / 信号用途</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>V-1</strong></td><td>Panasonic GH5</td><td>ATEM Mini Pro ISO (HDMI 1)</td><td>HDMI / 【カメラ1】司会・ステージ正面</td></tr>
+          <tr><td><strong>V-2</strong></td><td>Sony HDR-MV1</td><td>ATEM Mini Pro ISO (HDMI 2)</td><td>Micro HDMI / 【カメラ2】会場20名＋グラレコ超広角</td></tr>
+          <tr><td><strong>V-3</strong></td><td>Sony HVR-S270J</td><td>ATEM Mini Pro ISO (HDMI 3)</td><td>BNC ➔ SDI to HDMI / 【カメラ3】市民発言者ズーム</td></tr>
+          <tr><td><strong>V-4</strong></td><td>ATEM (USB-C OUT)</td><td>外付けSSD</td><td>USB-C 3.1 / 全カメラ個別ISO収録</td></tr>
+          <tr><td><strong>V-5</strong></td><td>ATEM (HDMI OUT)</td><td>j5create JVA06 (HDMI IN A)</td><td>HDMI / プログラム映像出力</td></tr>
+          <tr><td><strong>V-6</strong></td><td>j5create JVA06</td><td>iMac 27インチ (USB)</td><td>USB-C / Google Meet用Webカメラ入力</td></tr>
+          <tr><td><strong>V-7</strong></td><td>iMac 27インチ</td><td>4Kプロジェクター</td><td>USB-C ➔ HDMI / 150インチスクリーン拡張投影</td></tr>
+          <tr><td><strong>V-8</strong></td><td>MacBook Air M2</td><td>エプソン EB-1410WT (HDMI)</td><td>USB-Cハブ ➔ HDMI / 本アプリ画面のボード投影</td></tr>
+          <tr><td><strong>V-9</strong></td><td>エプソン EB-1410WT</td><td>MacBook Air M2 (USB)</td><td>USB-B ➔ USB-C / 電子ペン座標通信</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sys-box">
+      <h3>🔊 【B】音響・ミックスマイナス結線（A-1〜A-6）</h3>
+      <table class="matrix">
+        <thead>
+          <tr><th>番号</th><th>送り出し機器</th><th>受け側機器</th><th>ケーブル / 信号用途</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>A-1</strong></td><td>会場マイク群</td><td>アナログミキサー (MIC IN)</td><td>XLR / 司会・会場20名の発言マイク</td></tr>
+          <tr><td><strong>A-2</strong></td><td>ミキサー (MAIN OUT)</td><td>CLASSIC PRO PA-UNO ×2</td><td>XLR / 会場メインスピーカー拡声</td></tr>
+          <tr><td><strong>A-3</strong></td><td>ミキサー (AUX SEND)</td><td>YAMAHA AG03 (CH2/3)</td><td>フォン / 会場マイク音のみをMeetへ送る</td></tr>
+          <tr><td><strong>A-4</strong></td><td>AG03 (MONITOR OUT)</td><td>ミキサー (空きLINE IN)</td><td>フォンorRCA / リモート5名の声を会場PAへ戻す</td></tr>
+          <tr><td><strong>A-5</strong></td><td>AG03 (USB端子)</td><td>iMac 27インチ (USB-A)</td><td>USB B-to-A / Google Meet双方向音声</td></tr>
+          <tr><td><strong>A-6</strong></td><td>ミキサー (REC OUT)</td><td>MacBook Air M2 (音声入力)</td><td>RCA ➔ USB変換 / 本アプリのAI音声識別入力</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="padding:16px; overflow-y:auto;">
+    <div class="sys-box">
+      <h3>✅ 当日リハーサル・必須パラメーター点検チェックリスト</h3>
+      <label class="chk-row"><input type="checkbox" /> <span><strong>【45分前】AG03 スイッチ確認：</strong> <code>TO PC = INPUT MIX</code>（中央）、<code>MONITOR MUTE = ON（押し込み）</code>、<code>CH2/3 GAIN = LOW</code> になっているか</span></label>
+      <label class="chk-row"><input type="checkbox" /> <span><strong>【45分前】ミックスマイナス確認：</strong> アナログミキサーの「AG03戻りチャンネル」の <code>AUXツマミが必ず 0（ゼロ）</code> に絞り切られているか（エコー完全遮断）</span></label>
+      <label class="chk-row"><input type="checkbox" /> <span><strong>【30分前】JVA06 音声遮断：</strong> j5create JVA06 側面のオーディオスイッチ3個が <code>すべて OFF</code> になっているか</span></label>
+      <label class="chk-row"><input type="checkbox" /> <span><strong>【30分前】カメラOSD消去＆ATEM収録：</strong> GH5 / HDR-MV1 / HVR-S270J のHDMI情報表示がOFFで、ATEMのSSD録画（REC点灯可能）が認識されているか</span></label>
+      <label class="chk-row"><input type="checkbox" /> <span><strong>【20分前】iMac 27インチ設定：</strong> Google Meetのカメラ＝<code>JVA06</code>、マイク・スピーカー＝<code>Yamaha AG03</code> に指定し、150インチ4Kスクリーンへ拡張投影したか</span></label>
+      <label class="chk-row"><input type="checkbox" /> <span><strong>【15分前】MacBook Air M2 ＋ EB-1410WT：</strong> Google Meetに必ず <code>「コンパニオンモード」</code> で入室し、本アプリ画面をウィンドウ共有＆電子ペン描画できるか</span></label>
+    </div>
+  </div>
+</div>
+
+<script>
+  const MODEL_NAME = "gemini-2.5-flash";
+  const CHUNK_MS = 14000;      // 14秒ごとに音声話者識別＆4象限グラレコ更新
+  const RESEARCH_MS = 45000;   // 45秒ごとにAI自律リサーチ判定
+  const MINDMAP_MS = 60000;    // 60秒（1分）ごとにマインドマップ自動更新
+
+  // 25名初期名簿（会場20名＋リモート5名）
+  let roster = [
+    { id: 1, name: "山本(進行)", type: "venue", feature: "男性・進行トーン" },
+    { id: 2, name: "会場1: 佐藤", type: "venue", feature: "" },
+    { id: 3, name: "会場2: 鈴木", type: "venue", feature: "" },
+    { id: 4, name: "会場3: 高橋", type: "venue", feature: "" },
+    { id: 5, name: "会場4: 田中", type: "venue", feature: "" },
+    { id: 6, name: "会場5: 伊藤", type: "venue", feature: "" },
+    { id: 7, name: "会場6: 渡辺", type: "venue", feature: "" },
+    { id: 8, name: "会場7: 中村", type: "venue", feature: "" },
+    { id: 9, name: "会場8: 小林", type: "venue", feature: "" },
+    { id: 10, name: "会場9: 加藤", type: "venue", feature: "" },
+    { id: 11, name: "会場10: 吉田", type: "venue", feature: "" },
+    { id: 12, name: "会場11: 山田", type: "venue", feature: "" },
+    { id: 13, name: "会場12: 佐々木", type: "venue", feature: "" },
+    { id: 14, name: "会場13: 山口", type: "venue", feature: "" },
+    { id: 15, name: "会場14: 松本", type: "venue", feature: "" },
+    { id: 16, name: "会場15: 井上", type: "venue", feature: "" },
+    { id: 17, name: "会場16: 木村", type: "venue", feature: "" },
+    { id: 18, name: "会場17: 林", type: "venue", feature: "" },
+    { id: 19, name: "会場18: 斎藤", type: "venue", feature: "" },
+    { id: 20, name: "会場19: 清水", type: "venue", feature: "" },
+    { id: 21, name: "🌐 リモート1", type: "remote", feature: "リモート参加" },
+    { id: 22, name: "🌐 リモート2", type: "remote", feature: "リモート参加" },
+    { id: 23, name: "🌐 リモート3", type: "remote", feature: "リモート参加" },
+    { id: 24, name: "🌐 リモート4", type: "remote", feature: "リモート参加" },
+    { id: 25, name: "🌐 リモート5", type: "remote", feature: "リモート参加" }
+  ];
+
+  let lockedSpeaker = null;
+  let meetStream = null;
+  let venueStream = null;
+  let isRunning = false;
+  let chunkTimer = null;
+  let researchTimer = null;
+  let mindmapTimer = null;
+  let activeRecorder = null;
+  let popupWin = null;
+  let boardDisplayMode = "graphic";
+
+  const transcriptLog = [];
+  const researchedTopics = [];
+  const slides = [];
+  let currentSlideIndex = 0;
+
+  // ==================== 発表タイマー＆アジェンダテロップ状態管理（動画31:00機能） ====================
+  let timerTotalSec = 300;   // 初期5分
+  let timerRemainSec = 300;
+  let timerInterval = null;
+  let isTimerRunning = false;
+  let hudSnapPosition = "bottom-left";
+  let telopPresets = [
+    "① 開会・本日の趣旨説明",
+    "② 現状共有・課題出し",
+    "③ 意見・アイデア交換",
+    "④ マインドマップ深掘り",
+    "⑤ 合意形成・まとめ"
+  ];
+  let currentTelop = telopPresets[0];
+
+  const hudOverlay = document.getElementById("hudOverlay");
+  const hudTelopBox = document.getElementById("hudTelopBox");
+  const hudTelopText = document.getElementById("hudTelopText");
+  const hudTimerBox = document.getElementById("hudTimerBox");
+
+  function renderTelopChips() {
+    const container = document.getElementById("telopChipsContainer");
+    container.innerHTML = "";
+    telopPresets.forEach(t => {
+      const btn = document.createElement("button");
+      btn.className = `preset-chip ${t === currentTelop ? "active" : ""}`;
+      btn.textContent = t;
+      btn.addEventListener("click", () => {
+        currentTelop = t;
+        hudTelopText.textContent = t;
+        renderTelopChips();
+        syncPopupHudOnly();
+      });
+      container.appendChild(btn);
+    });
+  }
+  renderTelopChips();
+
+  document.getElementById("btnAddTelop").addEventListener("click", () => {
+    const val = prompt("追加するアジェンダ・テロップ名を入力してください：", "質疑応答・フリー討議");
+    if (val && val.trim()) {
+      telopPresets.push(val.trim());
+      currentTelop = val.trim();
+      hudTelopText.textContent = currentTelop;
+      renderTelopChips();
+      syncPopupHudOnly();
+    }
+  });
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  function updateTimerDisplay() {
+    hudTimerBox.textContent = formatTime(timerRemainSec);
+    hudTimerBox.classList.remove("warn", "timeup");
+    if (timerRemainSec === 0) {
+      hudTimerBox.classList.add("timeup");
+    } else if (timerRemainSec <= 60) {
+      hudTimerBox.classList.add("warn");
+    }
+
+    const showTimer = document.getElementById("chkShowTimer").checked;
+    const showTelop = document.getElementById("chkShowTelop").checked;
+    hudTimerBox.style.display = showTimer ? "block" : "none";
+    hudTelopBox.style.display = showTelop ? "flex" : "none";
+    hudOverlay.style.display = (showTimer || showTelop) ? "flex" : "none";
+
+    syncPopupHudOnly();
+  }
+
+  function playTimeUpChime() {
+    try {
+      const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+      [523.25, 659.25, 783.99].forEach((freq, i) => {
+        const osc = ctxAudio.createOscillator();
+        const gain = ctxAudio.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.15, ctxAudio.currentTime + i * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctxAudio.currentTime + i * 0.18 + 0.45);
+        osc.connect(gain);
+        gain.connect(ctxAudio.destination);
+        osc.start(ctxAudio.currentTime + i * 0.18);
+        osc.stop(ctxAudio.currentTime + i * 0.18 + 0.45);
+      });
+    } catch (e) {}
+  }
+
+  document.querySelectorAll(".timer-preset").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const mins = Number(btn.dataset.min);
+      timerTotalSec = mins * 60;
+      timerRemainSec = timerTotalSec;
+      updateTimerDisplay();
+    });
+  });
+
+  document.getElementById("btnTimerToggle").addEventListener("click", () => {
+    const btn = document.getElementById("btnTimerToggle");
+    if (isTimerRunning) {
+      clearInterval(timerInterval);
+      isTimerRunning = false;
+      btn.textContent = "▶ 再開";
+    } else {
+      if (timerRemainSec <= 0) timerRemainSec = timerTotalSec;
+      isTimerRunning = true;
+      btn.textContent = "⏸ 一時停止";
+      timerInterval = setInterval(() => {
+        if (timerRemainSec > 0) {
+          timerRemainSec--;
+          updateTimerDisplay();
+          if (timerRemainSec === 0) {
+            playTimeUpChime();
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            btn.textContent = "▶ 開始";
+          }
+        }
+      }, 1000);
+    }
+  });
+
+  document.getElementById("btnTimerReset").addEventListener("click", () => {
+    clearInterval(timerInterval);
+    isTimerRunning = false;
+    timerRemainSec = timerTotalSec;
+    document.getElementById("btnTimerToggle").textContent = "▶ 開始";
+    updateTimerDisplay();
+  });
+
+  document.getElementById("chkShowTimer").addEventListener("change", updateTimerDisplay);
+  document.getElementById("chkShowTelop").addEventListener("change", updateTimerDisplay);
+
+  function setHudSnap(pos) {
+    hudSnapPosition = pos;
+    hudOverlay.className = `hud-overlay hud-snap-${pos}`;
+    hudOverlay.style.left = "";
+    hudOverlay.style.top = "";
+    hudOverlay.style.right = "";
+    hudOverlay.style.bottom = "";
+    document.getElementById("selHudSnap").value = pos;
+    syncPopupHudOnly();
+  }
+
+  document.getElementById("selHudSnap").addEventListener("change", e => {
+    setHudSnap(e.target.value);
+  });
+
+  // HUDオーバーレイのドラッグ＆6点マグネット自動吸着
+  let hudDragging = false;
+  let hudOffsetX = 0, hudOffsetY = 0;
+
+  hudOverlay.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    hudDragging = true;
+    const rect = hudOverlay.getBoundingClientRect();
+    hudOffsetX = e.clientX - rect.left;
+    hudOffsetY = e.clientY - rect.top;
+    hudOverlay.classList.add("dragging");
+  });
+
+  window.addEventListener("pointermove", e => {
+    if (!hudDragging) return;
+    const parentRect = document.getElementById("boardWrapper").getBoundingClientRect();
+    const x = e.clientX - parentRect.left - hudOffsetX;
+    const y = e.clientY - parentRect.top - hudOffsetY;
+    hudOverlay.className = "hud-overlay dragging";
+    hudOverlay.style.left = `${x}px`;
+    hudOverlay.style.top = `${y}px`;
+    hudOverlay.style.right = "auto";
+    hudOverlay.style.bottom = "auto";
+  });
+
+  window.addEventListener("pointerup", e => {
+    if (!hudDragging) return;
+    hudDragging = false;
+    hudOverlay.classList.remove("dragging");
+    // 最も近いマグネット位置（上/下 × 左/中/右）を計算して吸着
+    const parentRect = document.getElementById("boardWrapper").getBoundingClientRect();
+    const relX = (e.clientX - parentRect.left) / parentRect.width;
+    const relY = (e.clientY - parentRect.top) / parentRect.height;
+
+    const vPos = relY < 0.5 ? "top" : "bottom";
+    let hPos = "center";
+    if (relX < 0.35) hPos = "left";
+    else if (relX > 0.65) hPos = "right";
+
+    setHudSnap(`${vPos}-${hPos}`);
+  });
+
+  // ==================== マインドマップ初期データ ====================
+  let mindmapData = {
+    id: "root",
+    label: "第1回 市民会議：地域の未来とまちづくり",
+    children: [
+      { id: "c1", label: "💡 主要な意見・提案", color: "#2563eb", collapsed: false, children: [
+        { id: "c1-1", label: "発言が始まると自動追加されます" }
+      ]},
+      { id: "c2", label: "⚠️ 課題・議論のポイント", color: "#d97706", collapsed: false, children: [
+        { id: "c2-1", label: "懸念点・論点が整理されます" }
+      ]},
+      { id: "c3", label: "🤝 合意事項・アクション", color: "#059669", collapsed: false, children: [
+        { id: "c3-1", label: "決定事項がツリー化されます" }
+      ]},
+      { id: "c4", label: "📊 AI調査ファクト", color: "#7c3aed", collapsed: false, children: [
+        { id: "c4-1", label: "裏付けデータが紐付きます" }
+      ]}
+    ]
+  };
+
+  // APIキー保存・復元
+  const apiKeyInput = document.getElementById("apiKey");
+  apiKeyInput.value = localStorage.getItem("studio_hello_api_key") || "";
+  apiKeyInput.addEventListener("change", () => {
+    localStorage.setItem("studio_hello_api_key", apiKeyInput.value.trim());
+  });
+
+  // 上部メインタブ切替
+  document.getElementById("tabBtnLive").addEventListener("click", () => {
+    document.getElementById("tabBtnLive").classList.add("active");
+    document.getElementById("tabBtnSystem").classList.remove("active");
+    document.getElementById("viewLive").classList.add("active");
+    document.getElementById("viewSystem").classList.remove("active");
+    resizeCanvas();
+  });
+  document.getElementById("tabBtnSystem").addEventListener("click", () => {
+    document.getElementById("tabBtnSystem").classList.add("active");
+    document.getElementById("tabBtnLive").classList.remove("active");
+    document.getElementById("viewSystem").classList.add("active");
+    document.getElementById("viewLive").classList.remove("active");
+  });
+
+  // ボード表示モード切替
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      boardDisplayMode = btn.dataset.view;
+      const grLayer = document.getElementById("aiGraphicLayer");
+      const mmLayer = document.getElementById("mindmapLayer");
+
+      if (boardDisplayMode === "graphic") {
+        grLayer.style.display = "flex";
+        mmLayer.style.display = "none";
+      } else if (boardDisplayMode === "mindmap") {
+        grLayer.style.display = "none";
+        mmLayer.style.display = "block";
+        renderMindMapSvg();
+      } else if (boardDisplayMode === "split") {
+        grLayer.style.display = "flex";
+        mmLayer.style.display = "block";
+        renderMindMapSvg();
+      }
+      syncPopupWindow();
+    });
+  });
+
+  // ==================== インタラクティブSVGマインドマップ描画エンジン ====================
+  const svgEl = document.getElementById("mindmapSvg");
+  let panX = 0, panY = 0, zoomScale = 1;
+  let isPanning = false, startPanX = 0, startPanY = 0;
+
+  svgEl.addEventListener("pointerdown", e => {
+    if (e.target.closest(".mm-node-group")) return;
+    isPanning = true;
+    startPanX = e.clientX - panX;
+    startPanY = e.clientY - panY;
+  });
+  window.addEventListener("pointermove", e => {
+    if (!isPanning) return;
+    panX = e.clientX - startPanX;
+    panY = e.clientY - startPanY;
+    updateSvgTransform();
+  });
+  window.addEventListener("pointerup", () => { isPanning = false; });
+
+  svgEl.addEventListener("wheel", e => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    zoomScale = Math.min(2.2, Math.max(0.45, zoomScale * factor));
+    updateSvgTransform();
+  }, { passive: false });
+
+  document.getElementById("btnMmResetZoom").addEventListener("click", () => {
+    panX = 0; panY = 0; zoomScale = 1;
+    updateSvgTransform();
+  });
+
+  function updateSvgTransform() {
+    const vp = svgEl.querySelector("#mmViewport");
+    if (vp) {
+      vp.setAttribute("transform", `translate(${panX}, ${panY}) scale(${zoomScale})`);
+    }
+  }
+
+  function renderMindMapSvg() {
+    svgEl.innerHTML = "";
+    const vp = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    vp.setAttribute("id", "mmViewport");
+    vp.setAttribute("transform", `translate(${panX}, ${panY}) scale(${zoomScale})`);
+    svgEl.appendChild(vp);
+
+    const branchColors = ["#2563eb", "#d97706", "#059669", "#7c3aed", "#db2777", "#0891b2"];
+
+    function countLeaves(node) {
+      if (node.collapsed || !node.children || node.children.length === 0) return 1;
+      return node.children.reduce((sum, ch) => sum + countLeaves(ch), 0);
+    }
+
+    const totalLeaves = Math.max(4, countLeaves(mindmapData));
+    const canvasHeight = Math.max(580, totalLeaves * 46);
+    const rootX = 130;
+
+    const linksGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const nodesGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    vp.appendChild(linksGroup);
+    vp.appendChild(nodesGroup);
+
+    function layoutTree(node, depth, x, yStart, yEnd, branchColor) {
+      const yCenter = (yStart + yEnd) / 2;
+      node._x = x;
+      node._y = yCenter;
+
+      if (!node.collapsed && node.children && node.children.length > 0) {
+        const total = countLeaves(node);
+        let cursor = yStart;
+        node.children.forEach((child, idx) => {
+          const w = countLeaves(child);
+          const span = ((yEnd - yStart) * w) / total;
+          const childColor = depth === 0 ? (child.color || branchColors[idx % branchColors.length]) : branchColor;
+          const nextX = x + (depth === 0 ? 270 : 285);
+          layoutTree(child, depth + 1, nextX, cursor, cursor + span, childColor);
+
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          const cX1 = x + 110;
+          const cX2 = nextX - 95;
+          path.setAttribute("d", `M ${x + 80} ${yCenter} C ${cX1} ${yCenter}, ${cX2} ${child._y}, ${nextX - 70} ${child._y}`);
+          path.setAttribute("fill", "none");
+          path.setAttribute("stroke", childColor);
+          path.setAttribute("stroke-width", depth === 0 ? "3.5" : "2");
+          path.setAttribute("opacity", "0.75");
+          linksGroup.appendChild(path);
+
+          cursor += span;
+        });
+      }
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("class", "mm-node-group");
+      g.style.cursor = "pointer";
+
+      const labelText = String(node.label || "");
+      const displayLabel = labelText.length > 26 ? labelText.slice(0, 25) + "…" : labelText;
+      const boxW = depth === 0 ? 220 : Math.max(150, Math.min(260, displayLabel.length * 11 + 34));
+      const boxH = depth === 0 ? 46 : 34;
+
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", x - (depth === 0 ? 90 : 75));
+      rect.setAttribute("y", yCenter - boxH / 2);
+      rect.setAttribute("width", boxW);
+      rect.setAttribute("height", boxH);
+      rect.setAttribute("rx", depth === 0 ? "12" : "8");
+      rect.setAttribute("fill", depth === 0 ? "#1e3a8a" : "#ffffff");
+      rect.setAttribute("stroke", depth === 0 ? "#1e40af" : branchColor);
+      rect.setAttribute("stroke-width", depth === 0 ? "3" : "2.2");
+      g.appendChild(rect);
+
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("x", x - (depth === 0 ? 78 : 63));
+      text.setAttribute("y", yCenter + 4);
+      text.setAttribute("fill", depth === 0 ? "#ffffff" : "#0f172a");
+      text.setAttribute("font-size", depth === 0 ? "13.5" : "12");
+      text.setAttribute("font-weight", depth <= 1 ? "700" : "500");
+      text.textContent = displayLabel;
+      g.appendChild(text);
+
+      if (node.children && node.children.length > 0 && depth > 0) {
+        const badge = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        const bx = x - 75 + boxW;
+        badge.setAttribute("cx", bx);
+        badge.setAttribute("cy", yCenter);
+        badge.setAttribute("r", "9");
+        badge.setAttribute("fill", branchColor);
+        g.appendChild(badge);
+
+        const sign = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        sign.setAttribute("x", bx - 4);
+        sign.setAttribute("y", yCenter + 4);
+        sign.setAttribute("fill", "#fff");
+        sign.setAttribute("font-size", "12");
+        sign.setAttribute("font-weight", "800");
+        sign.textContent = node.collapsed ? "+" : "−";
+        g.appendChild(sign);
+      }
+
+      g.addEventListener("click", e => {
+        e.stopPropagation();
+        if (node.children && node.children.length > 0 && depth > 0) {
+          node.collapsed = !node.collapsed;
+          renderMindMapSvg();
+          syncPopupWindow();
+        }
+      });
+
+      g.addEventListener("dblclick", e => {
+        e.stopPropagation();
+        const edited = prompt("ノードのテキストを編集:", node.label);
+        if (edited && edited.trim()) {
+          node.label = edited.trim();
+          renderMindMapSvg();
+          syncPopupWindow();
+        }
+      });
+
+      nodesGroup.appendChild(g);
+    }
+
+    layoutTree(mindmapData, 0, rootX, 20, canvasHeight - 20, "#1e3a8a");
+  }
+
+  // API不要のローカル即時マインドマップ構築
+  function buildMindMapFromLocalBoard() {
+    const getListItems = id => Array.from(document.querySelectorAll(`#${id} li`))
+      .map((li, i) => ({ id: `${id}-${i}`, label: li.textContent.trim() }))
+      .filter(x => x.label.length > 0);
+
+    const titleText = document.getElementById("grTitle").innerText.trim() || "市民会議テーマ";
+    mindmapData = {
+      id: "root",
+      label: titleText,
+      children: [
+        { id: "c1", label: "💡 主要な意見・提案", color: "#2563eb", collapsed: false, children: getListItems("grListOpinions") },
+        { id: "c2", label: "⚠️ 課題・議論の論点", color: "#d97706", collapsed: false, children: getListItems("grListIssues") },
+        { id: "c3", label: "🤝 合意・ネクストアクション", color: "#059669", collapsed: false, children: getListItems("grListConsensus") },
+        { id: "c4", label: "📊 AI調査ファクト", color: "#7c3aed", collapsed: false, children: getListItems("grListFacts") }
+      ]
+    };
+
+    const now = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    document.getElementById("mmLastUpdated").textContent = `即時ツリー同期: ${now}`;
+    renderMindMapSvg();
+    saveCurrentSlideState();
+    syncPopupWindow();
+  }
+
+  document.getElementById("btnMmLocalSync").addEventListener("click", buildMindMapFromLocalBoard);
+
+  // Gemini APIによる深層マインドマップ生成（1分自動更新＆手動更新）
+  async function updateMindMapViaAI() {
+    const apiKey = apiKeyInput.value.trim();
+    if (!apiKey || transcriptLog.length === 0) {
+      buildMindMapFromLocalBoard();
+      return;
+    }
+
+    document.getElementById("mmLastUpdated").textContent = "🔄 AIマインドマップ構築中...";
+    const titleText = document.getElementById("grTitle").innerText.trim();
+    const recentLogs = transcriptLog.slice(-25).map(l => `${l.speaker}: ${l.text}`).join("\n");
+    const facts = Array.from(document.querySelectorAll("#grListFacts li")).map(li => li.textContent).join("\n");
+
+    const prompt = `
+あなたは市民会議の思考整理を行うマインドマップ設計AIです。
+以下の会議タイトル、発言ログ、AI調査ファクトをもとに、議論の全体構造が一目でわかる階層型マインドマップのJSONデータを生成してください。
+
+【会議タイトル】
+${titleText}
+
+【発言ログ】
+${recentLogs}
+
+【調査ファクト】
+${facts || "なし"}
+
+【出力JSONフォーマット（厳守）】
+{
+  "id": "root",
+  "label": "${titleText}",
+  "children": [
+    {
+      "id": "b1",
+      "label": "主要テーマ・論点カテゴリ名（15文字以内）",
+      "children": [
+        {
+          "id": "b1-1",
+          "label": "具体的な意見や課題（誰の発言か・要点を24文字以内で）",
+          "children": [
+            {"id": "b1-1-1", "label": "補足や関連ファクト・結論（24文字以内）"}
+          ]
+        }
+      ]
+    }
+  ]
+}
+`;
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json", temperature: 0.25 }
+          })
+        }
+      );
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.label && Array.isArray(parsed.children)) {
+        mindmapData = parsed;
+        const now = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        document.getElementById("mmLastUpdated").textContent = `AI自動更新: ${now}`;
+        renderMindMapSvg();
+        saveCurrentSlideState();
+        syncPopupWindow();
+      }
+    } catch (e) {
+      buildMindMapFromLocalBoard();
+    }
+  }
+
+  document.getElementById("btnMmAiRefresh").addEventListener("click", updateMindMapViaAI);
+
+  // ==================== 25名パレット描画＆電子ペン選択 ====================
+  function renderRoster() {
+    const grid = document.getElementById("speakerGrid");
+    grid.innerHTML = "";
+    roster.forEach(person => {
+      const chip = document.createElement("div");
+      chip.className = `spk-chip ${person.type} ${lockedSpeaker === person.name ? "active" : ""}`;
+      chip.textContent = person.name;
+      chip.title = "タップで発言者固定 / ダブルクリックで名前変更";
+
+      chip.addEventListener("click", () => {
+        lockedSpeaker = (lockedSpeaker === person.name) ? null : person.name;
+        renderRoster();
+      });
+
+      chip.addEventListener("dblclick", () => {
+        const newName = prompt("参加者名を変更:", person.name);
+        if (newName && newName.trim()) {
+          person.name = newName.trim();
+          renderRoster();
+        }
+      });
+
+      grid.appendChild(chip);
+    });
+  }
+  renderRoster();
+
+  document.getElementById("btnEditRoster").addEventListener("click", () => {
+    const currentNames = roster.map(r => r.name).join(", ");
+    const input = prompt("カンマ区切りで参加者名簿を一括編集できます（最大25名）：", currentNames);
+    if (input) {
+      const names = input.split(",").map(s => s.trim()).filter(Boolean);
+      roster = names.map((n, idx) => ({
+        id: idx + 1,
+        name: n,
+        type: idx >= 20 ? "remote" : "venue",
+        feature: roster[idx]?.feature || ""
+      }));
+      renderRoster();
+    }
+  });
+
+  // ==================== EB-1410WT 電子ペン手書きキャンバス ====================
+  const canvas = document.getElementById("drawingCanvas");
+  const ctx = canvas.getContext("2d");
+  let penMode = "draw";
+  let penColor = "#ef4444";
+  let penWidth = 4;
+  let drawing = false;
+
+  function resizeCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const temp = canvas.toDataURL();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = temp;
+  }
+  window.addEventListener("resize", resizeCanvas);
+  setTimeout(() => {
+    resizeCanvas();
+    renderMindMapSvg();
+  }, 120);
+
+  document.querySelectorAll(".pen-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".pen-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      penMode = btn.dataset.mode;
+      if (penMode === "scroll") {
+        canvas.classList.add("passthrough");
+      } else {
+        canvas.classList.remove("passthrough");
+        penColor = btn.dataset.color;
+        penWidth = Number(btn.dataset.width);
+      }
+    });
+  });
+
+  canvas.addEventListener("pointerdown", e => {
+    if (penMode === "scroll") return;
+    drawing = true;
+    ctx.beginPath();
+    ctx.moveTo(e.offsetX, e.offsetY);
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (!drawing) return;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = penWidth;
+    if (penMode === "erase") {
+      ctx.globalCompositeOperation = "destination-out";
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = penColor;
+    }
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+  });
+  window.addEventListener("pointerup", () => {
+    if (drawing) {
+      drawing = false;
+      saveCurrentSlideState();
+      syncPopupWindow();
+    }
+  });
+
+  document.getElementById("btnClearInk").addEventListener("click", () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    saveCurrentSlideState();
+    syncPopupWindow();
+  });
+
+  // ==================== スライド履歴管理 ====================
+  function saveCurrentSlideState() {
+    slides[currentSlideIndex] = {
+      title: document.getElementById("grTitle").innerText,
+      cardsHtml: document.getElementById("grCardsContainer").innerHTML,
+      mindmapJson: JSON.parse(JSON.stringify(mindmapData)),
+      svgMarkup: svgEl.outerHTML,
+      inkDataUrl: canvas.toDataURL()
+    };
+    renderSlideThumbs();
+  }
+
+  function renderSlideThumbs() {
+    const container = document.getElementById("slideThumbs");
+    container.innerHTML = "";
+    slides.forEach((s, idx) => {
+      const b = document.createElement("button");
+      b.className = `slide-thumb ${idx === currentSlideIndex ? "active" : ""}`;
+      b.textContent = `スライド ${idx + 1}`;
+      b.addEventListener("click", () => loadSlide(idx));
+      container.appendChild(b);
+    });
+  }
+
+  function loadSlide(idx) {
+    saveCurrentSlideState();
+    currentSlideIndex = idx;
+    const s = slides[idx];
+    document.getElementById("grTitle").innerText = s.title;
+    document.getElementById("grCardsContainer").innerHTML = s.cardsHtml;
+    if (s.mindmapJson) {
+      mindmapData = JSON.parse(JSON.stringify(s.mindmapJson));
+      renderMindMapSvg();
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (s.inkDataUrl) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0);
+      img.src = s.inkDataUrl;
+    }
+    renderSlideThumbs();
+    syncPopupWindow();
+  }
+
+  document.getElementById("btnNewSlide").addEventListener("click", () => {
+    saveCurrentSlideState();
+    const nextNum = slides.length + 1;
+    document.getElementById("grTitle").innerText = `市民会議 スライド ${nextNum}`;
+    document.getElementById("grCardsContainer").innerHTML = `
+      <div class="gr-card opinion"><h3>💡 主要な意見・提案</h3><ul id="grListOpinions"></ul></div>
+      <div class="gr-card issue"><h3>⚠️ 課題・議論のポイント</h3><ul id="grListIssues"></ul></div>
+      <div class="gr-card consensus"><h3>🤝 合意事項・ネクストアクション</h3><ul id="grListConsensus"></ul></div>
+      <div class="gr-card fact"><h3>📊 AIリサーチ・ファクトデータ</h3><ul id="grListFacts"></ul></div>
+    `;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    buildMindMapFromLocalBoard();
+    slides.push({
+      title: `市民会議 スライド ${nextNum}`,
+      cardsHtml: document.getElementById("grCardsContainer").innerHTML,
+      mindmapJson: JSON.parse(JSON.stringify(mindmapData)),
+      svgMarkup: svgEl.outerHTML,
+      inkDataUrl: null
+    });
+    currentSlideIndex = slides.length - 1;
+    renderSlideThumbs();
+  });
+
+  setTimeout(saveCurrentSlideState, 250);
+
+  // ==================== 音声接続 ====================
+  function checkReady() {
+    document.getElementById("btnStart").disabled = !((meetStream || venueStream) && !isRunning);
+  }
+
+  document.getElementById("btnAudioMeet").addEventListener("click", async () => {
+    try {
+      const s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      s.getVideoTracks().forEach(t => t.stop());
+      if (s.getAudioTracks().length === 0) {
+        alert("「タブの音声を共有」にチェックを入れてください。");
+        return;
+      }
+      meetStream = s;
+      document.getElementById("btnAudioMeet").textContent = "✅ Meet音済";
+      checkReady();
+    } catch (e) {}
+  });
+
+  document.getElementById("btnAudioVenue").addEventListener("click", async () => {
+    try {
+      venueStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      document.getElementById("btnAudioVenue").textContent = "✅ 会場音済";
+      checkReady();
+    } catch (e) {
+      alert("マイク/ライン入力(A-6)の権限を許可してください。");
+    }
+  });
+
+  function createMixedStream() {
+    const audioCtx = new AudioContext();
+    const dest = audioCtx.createMediaStreamDestination();
+    if (meetStream && meetStream.getAudioTracks().length > 0) {
+      audioCtx.createMediaStreamSource(meetStream).connect(dest);
+    }
+    if (venueStream && venueStream.getAudioTracks().length > 0) {
+      audioCtx.createMediaStreamSource(venueStream).connect(dest);
+    }
+    return dest.stream;
+  }
+
+  // ==================== 会議AI稼働ループ ====================
+  document.getElementById("btnStart").addEventListener("click", () => {
+    if (!apiKeyInput.value.trim()) {
+      alert("上部に Gemini API Key を入力してください。");
+      return;
+    }
+    isRunning = true;
+    document.getElementById("btnStart").disabled = true;
+    document.getElementById("btnStop").disabled = false;
+    document.getElementById("transcriptList").innerHTML = "";
+    const badge = document.getElementById("statusBadge");
+    badge.textContent = "稼働中";
+    badge.classList.add("ok");
+
+    const stream = createMixedStream();
+    recordLoop(stream);
+
+    researchTimer = setInterval(() => {
+      if (document.getElementById("autoResearchToggle").checked) {
+        runAutonomousResearch();
+      }
+    }, RESEARCH_MS);
+
+    mindmapTimer = setInterval(() => {
+      if (document.getElementById("mmAutoToggle").checked) {
+        updateMindMapViaAI();
+      }
+    }, MINDMAP_MS);
+  });
+
+  document.getElementById("btnStop").addEventListener("click", () => {
+    isRunning = false;
+    clearTimeout(chunkTimer);
+    clearInterval(researchTimer);
+    clearInterval(mindmapTimer);
+    if (activeRecorder && activeRecorder.state === "recording") activeRecorder.stop();
+    document.getElementById("btnStart").disabled = false;
+    document.getElementById("btnStop").disabled = true;
+    const badge = document.getElementById("statusBadge");
+    badge.textContent = "停止";
+    badge.classList.remove("ok");
+  });
+
+  function recordLoop(stream) {
+    if (!isRunning) return;
+    const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    activeRecorder = recorder;
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.onstop = async () => {
+      if (chunks.length > 0) {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        if (blob.size > 2000) await analyzeAudioAndUpdateGraphic(blob);
+      }
+    };
+    recorder.start();
+    chunkTimer = setTimeout(() => {
+      if (recorder.state === "recording") recorder.stop();
+      if (isRunning) recordLoop(stream);
+    }, CHUNK_MS);
+  }
+
+  function blobToBase64(blob) {
+    return new Promise(res => {
+      const r = new FileReader();
+      r.onloadend = () => res(r.result.split(",")[1]);
+      r.readAsDataURL(blob);
+    });
+  }
+
+  // ==================== 音声認識＋25名話者識別＋グラレコ＆マップ更新 ====================
+  async function analyzeAudioAndUpdateGraphic(blob) {
+    const apiKey = apiKeyInput.value.trim();
+    const base64Audio = await blobToBase64(blob);
+
+    const rosterSummary = roster.map(r => `${r.name}${r.feature ? `(${r.feature})` : ""}`).join(", ");
+    const recentLogs = transcriptLog.slice(-6).map(l => `${l.speaker}: ${l.text}`).join("\n");
+
+    const prompt = `
+あなたはスタジオハロー市民会議のAI書記兼グラフィックレコーダーです。
+添付された音声には、同じアカウント（会場ミキサー）から発言する会場参加者20名と、リモート参加者5名の声が含まれています。
+
+【登録参加者25名と声の特徴】
+${rosterSummary}
+
+【現在ファシリテーターが電子ペンで指定中の話者】
+${lockedSpeaker || "指定なし（声質・トーン・自己紹介から自動識別してください）"}
+
+【直前の会話文脈】
+${recentLogs || "なし"}
+
+以下のJSON形式で出力してください（無音の場合は segments を空配列にしてください）：
+{
+  "segments": [
+    {"speaker": "参加者名", "voice_feature": "声の特徴メモ", "text": "発言内容"}
+  ],
+  "graphic_update": {
+    "opinions": ["追加する主要意見（あれば1〜2個、なければ空配列）"],
+    "issues": ["追加する課題・論点（あれば1〜2個、なければ空配列）"],
+    "consensus": ["追加する合意事項（あれば1〜2個、なければ空配列）"]
+  }
+}
+`;
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType: "audio/webm", data: base64Audio } }
+              ]
+            }],
+            generationConfig: { responseMimeType: "application/json", temperature: 0.2 }
+          })
+        }
+      );
+
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+
+      const now = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+      if (Array.isArray(parsed.segments) && parsed.segments.length > 0) {
+        parsed.segments.forEach(seg => {
+          if (!seg.text || !seg.text.trim()) return;
+          const spk = lockedSpeaker || seg.speaker || "会場発言者";
+          const found = roster.find(r => r.name === spk);
+          if (found && seg.voice_feature) found.feature = seg.voice_feature;
+
+          const item = { time: now, speaker: spk, text: seg.text.trim() };
+          transcriptLog.push(item);
+          appendTranscriptUI(item);
+        });
+
+        if (lockedSpeaker && document.getElementById("autoLockRelease").checked) {
+          lockedSpeaker = null;
+          renderRoster();
+        }
+      }
+
+      if (parsed.graphic_update) {
+        applyGraphicBullets("grListOpinions", parsed.graphic_update.opinions);
+        applyGraphicBullets("grListIssues", parsed.graphic_update.issues);
+        applyGraphicBullets("grListConsensus", parsed.graphic_update.consensus);
+        document.getElementById("grUpdatedTime").textContent = `最終更新: ${now}`;
+        buildMindMapFromLocalBoard();
+      }
+    } catch (e) {
+      console.error("音声・グラレコ解析エラー:", e);
+    }
+  }
+
+  function appendTranscriptUI(item) {
+    const list = document.getElementById("transcriptList");
+    const div = document.createElement("div");
+    div.className = "log-item";
+    div.innerHTML = `
+      <div class="log-meta">
+        <span class="log-speaker" title="クリックで話者修正">${escapeHtml(item.speaker)}</span>
+        <span style="margin-left:auto; color:var(--muted);">${item.time}</span>
+      </div>
+      <div>${escapeHtml(item.text)}</div>
+    `;
+    div.querySelector(".log-speaker").addEventListener("click", () => {
+      const next = prompt("発言者名を修正:", item.speaker);
+      if (next && next.trim()) {
+        item.speaker = next.trim();
+        div.querySelector(".log-speaker").textContent = item.speaker;
+      }
+    });
+    list.appendChild(div);
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function applyGraphicBullets(listId, items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const ul = document.getElementById(listId);
+    if (!ul) return;
+    items.forEach(txt => {
+      if (!txt || !txt.trim()) return;
+      const li = document.createElement("li");
+      li.textContent = txt.trim();
+      ul.appendChild(li);
+    });
+  }
+
+  document.getElementById("btnUpdateGr").addEventListener("click", async () => {
+    await updateMindMapViaAI();
+  });
+
+  // ==================== AI自律リサーチ（動画5:38機能） ====================
+  async function runAutonomousResearch(manualQuery = "") {
+    const apiKey = apiKeyInput.value.trim();
+    if (!apiKey) return;
+    if (!manualQuery && transcriptLog.length === 0) return;
+
+    const recentText = transcriptLog.slice(-12).map(t => `${t.speaker}: ${t.text}`).join("\n");
+    const prompt = manualQuery
+      ? `市民会議の参加者から「${manualQuery}」について質問が出ました。Google検索を用いて正確な事実・数値・制度を調査し、1行目に「【調査トピック】${manualQuery}」、2行目以降に3〜4点の箇条書きで簡潔にまとめてください。`
+      : `あなたは市民会議のリアルタイム調査AIです。以下の直近の会話から、数値・統計・自治体制度・法律・専門用語など「今すぐ裏付けデータを調べて画面に出すと議論が深まるトピック」が1つあればGoogle検索で調べ、1行目に「【調査トピック】〇〇」、2行目以降に要点を箇条書きしてください。不要なら「NO_SEARCH_NEEDED」とだけ出力してください。\n既出トピック: ${researchedTopics.join(", ")}\n\n直近の会話:\n${recentText}`;
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            tools: [{ google_search: {} }],
+            generationConfig: { temperature: 0.2 }
+          })
+        }
+      );
+      const data = await res.json();
+      const cand = data.candidates?.[0];
+      const text = cand?.content?.parts?.map(p => p.text).join("") || "";
+      if (!text || text.includes("NO_SEARCH_NEEDED")) return;
+
+      const lines = text.trim().split("\n");
+      const title = lines[0].replace(/^【調査トピック】/, "").trim();
+      const body = lines.slice(1).join("\n").trim();
+      researchedTopics.push(title);
+
+      const chunks = cand?.groundingMetadata?.groundingChunks || [];
+      const links = chunks.filter(c => c.web?.uri).map(c => ({ title: c.web.title || c.web.uri, uri: c.web.uri }));
+
+      renderResearchItem(title, body, links);
+    } catch (e) {
+      console.error("リサーチエラー:", e);
+    }
+  }
+
+  function renderResearchItem(title, body, links) {
+    const list = document.getElementById("researchList");
+    const badge = document.getElementById("researchCount");
+    badge.textContent = String(Number(badge.textContent) + 1);
+
+    const card = document.createElement("div");
+    card.className = "research-card";
+    const linksHtml = links.slice(0, 2).map(l => `<a href="${escapeHtml(l.uri)}" target="_blank" rel="noopener">🔗 ${escapeHtml(l.title)}</a>`).join("");
+
+    card.innerHTML = `
+      <div class="research-title">
+        <span>💡 ${escapeHtml(title)}</span>
+        <button class="pin-btn" style="background:#8b5cf6; border:none; color:#fff; padding:3px 8px; font-size:11px;">📌 グラレコ＆マップに貼る</button>
+      </div>
+      <div class="research-body">${escapeHtml(body)}</div>
+      <div class="research-links">${linksHtml}</div>
+    `;
+
+    card.querySelector(".pin-btn").addEventListener("click", () => {
+      const summaryLine = `${title}: ${body.replace(/\n+/g, " / ").slice(0, 95)}`;
+      applyGraphicBullets("grListFacts", [summaryLine]);
+      buildMindMapFromLocalBoard();
+    });
+
+    list.prepend(card);
+  }
+
+  document.getElementById("btnManualSearch").addEventListener("click", () => {
+    const q = document.getElementById("manualQueryInput").value.trim();
+    if (q) {
+      runAutonomousResearch(q);
+      document.getElementById("manualQueryInput").value = "";
+    }
+  });
+  document.getElementById("manualQueryInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("btnManualSearch").click();
+  });
+
+  // ==================== 150インチ4Kスクリーン投影用サブウィンドウ（チラつきゼロDOM同期） ====================
+  document.getElementById("btnPopout").addEventListener("click", () => {
+    popupWin = window.open("", "StudioHelloProjection", "width=1280,height=720");
+    initPopupDocument();
+    syncPopupWindow();
+  });
+
+  function initPopupDocument() {
+    if (!popupWin || popupWin.closed) return;
+    popupWin.document.open();
+    popupWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8" />
+        <title>150インチ4K投影ビュー - Studio Hello</title>
+        <style>
+          body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",sans-serif; background:#f8fafc; color:#0f172a; overflow:hidden; }
+          .wrap { position:relative; width:100vw; height:100vh; display:flex; flex-direction:column; padding:18px; box-sizing:border-box; gap:12px; }
+          #popGrSec { flex:1; overflow:hidden; }
+          #popMmSec { flex:1; background:#f1f5f9; border:2px solid #cbd5e1; border-radius:10px; overflow:hidden; }
+          #popMmSec svg { width:100%; height:100%; }
+          .gr-header-banner { background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#fff; padding:12px 18px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+          .gr-cards-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+          .gr-card { background:#fff; border:2px solid #cbd5e1; border-radius:10px; padding:12px; }
+          .gr-card.opinion { border-top:6px solid #3b82f6; }
+          .gr-card.issue { border-top:6px solid #f59e0b; }
+          .gr-card.consensus { border-top:6px solid #10b981; background:#f0fdf4; }
+          .gr-card.fact { border-top:6px solid #8b5cf6; background:#f5f3ff; }
+          #popInk { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
+          .hud-overlay { position:absolute; z-index:3; display:flex; align-items:center; gap:12px; background:rgba(15,23,42,0.92); color:#fff; border:2px solid #3b82f6; border-radius:14px; padding:10px 20px; box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+          .hud-snap-top-center { top:16px; left:50%; transform:translateX(-50%); }
+          .hud-snap-top-right { top:16px; right:20px; }
+          .hud-snap-top-left { top:16px; left:20px; }
+          .hud-snap-bottom-center { bottom:16px; left:50%; transform:translateX(-50%); }
+          .hud-snap-bottom-right { bottom:16px; right:20px; }
+          .hud-snap-bottom-left { bottom:16px; left:20px; }
+          .hud-telop-badge { background:linear-gradient(135deg,#f59e0b,#d97706); color:#000; font-weight:800; font-size:16px; padding:5px 14px; border-radius:8px; display:flex; align-items:center; gap:6px; }
+          .hud-timer-box { font-family:monospace; font-size:26px; font-weight:900; padding:2px 12px; border-radius:8px; background:#1e293b; color:#60a5fa; border:1px solid #475569; }
+          .hud-timer-box.warn { background:#78350f; color:#fde047; border-color:#f59e0b; }
+          .hud-timer-box.timeup { background:#991b1b; color:#fecaca; border-color:#ef4444; }
+        </style>
+      </head>
+      <body>
+        <div class="wrap">
+          <div id="popHud" class="hud-overlay hud-snap-bottom-left"></div>
+          <div id="popGrSec"></div>
+          <div id="popMmSec"></div>
+          <img id="popInk" />
+        </div>
+      </body>
+      </html>
+    `);
+    popupWin.document.close();
+  }
+
+  function syncPopupHudOnly() {
+    if (!popupWin || popupWin.closed) return;
+    const popHud = popupWin.document.getElementById("popHud");
+    if (!popHud) return;
+    popHud.className = `hud-overlay hud-snap-${hudSnapPosition}`;
+    popHud.style.display = hudOverlay.style.display;
+    popHud.innerHTML = hudOverlay.innerHTML;
+  }
+
+  function syncPopupWindow() {
+    if (!popupWin || popupWin.closed) return;
+    if (!popupWin.document.getElementById("popGrSec")) initPopupDocument();
+
+    const showGr = (boardDisplayMode === "graphic" || boardDisplayMode === "split");
+    const showMm = (boardDisplayMode === "mindmap" || boardDisplayMode === "split");
+
+    const popGr = popupWin.document.getElementById("popGrSec");
+    const popMm = popupWin.document.getElementById("popMmSec");
+    const popInk = popupWin.document.getElementById("popInk");
+
+    if (popGr) {
+      popGr.style.display = showGr ? "block" : "none";
+      popGr.innerHTML = document.getElementById("aiGraphicLayer").innerHTML;
+    }
+    if (popMm) {
+      popMm.style.display = showMm ? "block" : "none";
+      popMm.innerHTML = svgEl.outerHTML;
+    }
+    if (popInk) {
+      popInk.src = canvas.toDataURL();
+    }
+    syncPopupHudOnly();
+  }
+
+  // ==================== 議事録＆グラレコ＆マインドマップ HTML一括保存 ====================
+  document.getElementById("btnSaveHtml").addEventListener("click", () => {
+    saveCurrentSlideState();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const slidesHtml = slides.map((s, i) => `
+      <div style="border:2px solid #94a3b8; border-radius:10px; padding:16px; margin-bottom:24px; background:#f8fafc;">
+        <h2>スライド ${i + 1}: ${escapeHtml(s.title)}</h2>
+        <h3>📋 4象限グラレコ</h3>
+        ${s.cardsHtml}
+        <h3 style="margin-top:16px;">🧠 マインドマップ構造図</h3>
+        <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:10px; overflow:auto;">
+          ${s.svgMarkup || ""}
+        </div>
+        ${s.inkDataUrl ? `<div style="margin-top:12px;"><strong>✏️ 電子ペン手書きレイヤー:</strong><br><img src="${s.inkDataUrl}" style="max-width:100%; border:1px solid #cbd5e1;" /></div>` : ""}
+      </div>
+    `).join("");
+
+    const logsHtml = transcriptLog.map(l => `<li><strong>[${l.time}] ${escapeHtml(l.speaker)}:</strong> ${escapeHtml(l.text)}</li>`).join("");
+
+    const exportDoc = `<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>Studio Hello 市民会議 統合記録 (${dateStr})</title></head>
+<body style="font-family:sans-serif; max-width:1050px; margin:20px auto; line-height:1.6;">
+  <h1>Studio Hello 市民会議 統合議事録・グラレコ・マインドマップ (${dateStr})</h1>
+  ${slidesHtml}
+  <h2>🎙️ 話者識別付き 全発言ログ</h2>
+  <ul>${logsHtml}</ul>
+</body>
+</html>`;
+
+    const blob = new Blob([exportDoc], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `studio_hello_minutes_mindmap_${dateStr}.html`;
+    a.click();
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+</script>
+</body>
+</html>
