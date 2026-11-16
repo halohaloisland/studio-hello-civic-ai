@@ -565,10 +565,14 @@
           <input type="checkbox" id="chkShowTimer" checked /> ⏱️タイマー:
         </label>
         <button class="timer-preset" data-min="1">1分</button>
+        <button class="timer-preset" data-min="2">2分</button>
         <button class="timer-preset" data-min="3">3分</button>
         <button class="timer-preset" data-min="5">5分</button>
         <button class="timer-preset" data-min="10">10分</button>
         <button class="timer-preset" data-min="15">15分</button>
+        <select id="selTimerCustom" title="15〜60分を自由に選択">
+          <option value="">15–60分▽</option>
+        </select>
         <button id="btnTimerToggle" class="btn-accent" style="padding:3px 9px;">▶ 開始</button>
         <button id="btnTimerReset" style="padding:3px 7px;">↺</button>
         <select id="selHudSnap" title="画面上のマグネット吸着位置">
@@ -902,6 +906,23 @@
       timerRemainSec = timerTotalSec;
       updateTimerDisplay();
     });
+  });
+
+  // 15〜60分を1分単位で自由に選択できるセレクト
+  const selTimerCustom = document.getElementById("selTimerCustom");
+  for (let m = 15; m <= 60; m++) {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = m + "分";
+    selTimerCustom.appendChild(opt);
+  }
+  selTimerCustom.addEventListener("change", () => {
+    const mins = Number(selTimerCustom.value);
+    if (!mins) return;
+    timerTotalSec = mins * 60;
+    timerRemainSec = timerTotalSec;
+    updateTimerDisplay();
+    selTimerCustom.value = "";
   });
 
   document.getElementById("btnTimerToggle").addEventListener("click", () => {
